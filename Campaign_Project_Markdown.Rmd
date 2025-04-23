@@ -31,3 +31,60 @@ library(readxl)
 library(tinytex)
 ```
 
+```{r}
+setwd("C:/Users/alexj/OneDrive/Desktop/Campaign_Project")
+```
+
+```{r}
+dataset1A <- read.csv("C:/Users/alexj/OneDrive/Desktop/Campaign_Project/data-analyst-take-home/dataset1a.csv")
+dataset1B <- read.csv("C:/Users/alexj/OneDrive/Desktop/Campaign_Project/data-analyst-take-home/dataset1b.csv")
+dataset1C <- read.csv("C:/Users/alexj/OneDrive/Desktop/Campaign_Project/data-analyst-take-home/dataset1c.csv")
+mail_plain <- read.csv("C:/Users/alexj/OneDrive/Desktop/Campaign_Project/data-analyst-take-home/mail_plan.csv")
+```
+
+```{r}
+#Section 1
+#Question 1.1
+TransactionFile <- dataset1A %>% 
+  filter(str_detect(PrimaryAddress, "^[0-9]"))
+#9025 valid addresses
+```
+
+```{r}
+#Question 1.2
+TransactionFileTest <- TransactionFile %>% 
+ filter(!str_detect(OrderDate, "^2027")) %>%
+  mutate(OrderDate = as.Date(OrderDate)) %>% 
+  filter(!is.na(OrderDate)) %>% 
+  arrange(OrderNumber, OrderDate) %>% 
+  distinct(OrderNumber, .keep_all = TRUE)
+```
+
+```{r}
+#Maybe remove (This has nothing to do with the assignment at least what the question is asking)
+#OrderNumbers are NA, counting those
+#Wondering if I should randomly assign order numbers to these individuals
+
+bad_ids <- TransactionFile %>%
+  filter(OrderNumber == "") %>%
+  pull(CustomerID)
+
+TransactionFile %>%
+  filter(CustomerID %in% bad_ids) %>%
+  count(CustomerID, sort = TRUE)
+
+```
+
+
+```{r}
+#Checking which CustomerIDs were not distinct
+TransactionFile %>%
+  count(CustomerID) %>%
+  filter(n > 1)
+```
+```{r}
+TransactionFile %>%
+  count(OrderNumber) %>% 
+  filter(n > 1)
+```
+

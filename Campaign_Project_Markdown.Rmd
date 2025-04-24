@@ -103,6 +103,28 @@ TransactionFile %>%
 TransactionFileCleaned %>% 
   count(State, sort = TRUE)
 ```
+
+```{r}
+TransactionFileCleaned %>%
+  count(State, name = "Orders") %>%
+  arrange(desc(Orders)) %>%
+  top_n(10, Orders) %>%  # Optional: top 10 states
+  ggplot(aes(x = reorder(State, Orders), y = Orders)) +
+  geom_col(fill = "steelblue") +
+  geom_text(aes(label = Orders), hjust = -0.1, size = 3.5) +  # Add labels on bars
+  coord_flip() +
+  labs(
+    title = "Top States by Number of Orders",
+    x = "State",
+    y = "Orders"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold")  # Center the title
+  )
+```
+
+
 ```{r}
 #Regarding Question 1.3 (I am curious)
 TransactionFileCleaned %>%
@@ -129,6 +151,25 @@ TransactionFileCleaned %>%
   filter(SecondaryAddress != "") %>%
   nrow()
 ```
+
+```{r}
+TransactionFileCleaned %>%
+  mutate(HasSecondaryAddress = ifelse(SecondaryAddress != "", "Yes", "No")) %>%
+  count(HasSecondaryAddress) %>%
+  ggplot(aes(x = HasSecondaryAddress, y = n, fill = HasSecondaryAddress)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = n), vjust = -0.5, size = 4) +
+  labs(
+    title = "Orders With vs Without a Secondary Address",
+    x = "Has Secondary Address",
+    y = "Number of Orders"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+```
+
+
+
 ```{r}
 #Question 1.5
 TransactionFileCleaned %>% 
@@ -256,5 +297,49 @@ FirstOrNotbyTest <- mail_matches_updated %>%
   ) %>% 
   mutate(FirstTimeOrderRateperTest = round(Orders / sum(Orders), 2))
 ```
+```{r}
+#Trying something new
+library(ggplot2)
+library(dplyr)
+library(maps)
 
+```
+```{r}
+# Summarize orders by state abbreviation
+state_orders <- TransactionFileCleaned %>%
+  count(State, name = "Orders")
+
+# Create a lookup table from abbreviations to full state names
+state_abbrevs <- data.frame(
+  State = state.abb,
+  full_name = tolower(state.name)
+)
+
+# Join to get full state names (required for map_data)
+state_orders_map <- left_join(state_orders, state_abbrevs, by = "State")
+
+```
+
+
+```{r}
+us_map <- map_data("state")
+
+map_data_with_orders <- left_join(us_map, state_orders_map, by = c("region" = "full_name"))
+
+```
+
+```{r}
+ggplot(map_data_with_orders, aes(long, lat, group = group)) +
+  geom_polygon(aes(fill = Orders), color = "white") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", na.value = "gray90") +
+  labs(
+    title = "Number of Orders by State",
+    fill = "Orders"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+
+```
 

@@ -1735,6 +1735,189 @@ library(readxl)</code></pre>
 <pre><code>## Warning: package &#39;readxl&#39; was built under R version 4.4.3</code></pre>
 <pre class="r"><code>library(tinytex)</code></pre>
 <pre><code>## Warning: package &#39;tinytex&#39; was built under R version 4.4.3</code></pre>
+<pre class="r"><code>setwd(&quot;C:/Users/alexj/OneDrive/Desktop/Campaign_Project&quot;)</code></pre>
+<pre class="r"><code>dataset1A &lt;- read.csv(&quot;C:/Users/alexj/OneDrive/Desktop/Campaign_Project/data-analyst-take-home/dataset1a.csv&quot;)
+MailFile &lt;- read.csv(&quot;data-analyst-take-home/dataset1b.csv&quot;)
+HoldoutFile &lt;- read.csv(&quot;data-analyst-take-home/dataset1c.csv&quot;)
+mail_plan &lt;- read.csv(&quot;C:/Users/alexj/OneDrive/Desktop/Campaign_Project/data-analyst-take-home/mail_plan.csv&quot;)</code></pre>
+<pre class="r"><code>#Section 1
+#Question 1.1
+TransactionFile &lt;- dataset1A %&gt;% 
+  filter(str_detect(PrimaryAddress, &quot;^[0-9]&quot;))
+#Interesting note: these addresses remove any Armed Forces Europe &amp; Americas (AE &amp; AA)</code></pre>
+<pre class="r"><code>#Answer printed for question 1.1
+TransactionFile %&gt;% 
+  count(PrimaryAddress) %&gt;% 
+  nrow()</code></pre>
+<pre><code>## [1] 9025</code></pre>
+<pre class="r"><code>TransactionFile %&gt;%
+  count(OrderNumber) %&gt;% 
+  filter(n &gt; 1)</code></pre>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["OrderNumber"],"name":[1],"type":["chr"],"align":["left"]},{"label":["n"],"name":[2],"type":["int"],"align":["right"]}],"data":[{"1":"","2":"5"},{"1":"10756344","2":"2"},{"1":"19889393","2":"2"},{"1":"25969529","2":"2"},{"1":"43382460","2":"2"},{"1":"53837931","2":"2"},{"1":"63373369","2":"2"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+<pre class="r"><code>sum(TransactionFile$OrderNumber == &quot;&quot;) #Number of NAs in Transaction File; Order Number Column</code></pre>
+<pre><code>## [1] 5</code></pre>
+<pre class="r"><code>#Question 1.2
+TransactionFileCleaned &lt;- TransactionFile %&gt;% 
+ filter(!str_detect(OrderDate, &quot;^2027&quot;)) %&gt;%  #remove incorrect dates
+  mutate(OrderDate = as.Date(OrderDate)) %&gt;%  #change OrderDate to from character to Date
+  filter(!is.na(OrderDate)) %&gt;%               #remove any NAs in Date column
+  filter(OrderNumber != &quot;&quot;) %&gt;%               #remove any blank characters in OrderNumber column
+  arrange(OrderNumber, OrderDate) %&gt;%         #arrange by OrderNumber then Orderdate
+  distinct(OrderNumber, .keep_all = TRUE)     #keep distinct values in OrderNumber that occured first</code></pre>
+<pre class="r"><code>#Maybe remove (This has nothing to do with the assignment at least what the question is asking)
+#OrderNumbers are NA, counting those
+#Wondering if I should randomly assign order numbers to these individuals
+#Regarding Question 1.2
+bad_ids &lt;- TransactionFile %&gt;%
+  filter(OrderNumber == &quot;&quot;) %&gt;%
+  pull(CustomerID)
+
+TransactionFile %&gt;%
+  filter(CustomerID %in% bad_ids) %&gt;%
+  count(CustomerID, sort = TRUE)</code></pre>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["CustomerID"],"name":[1],"type":["chr"],"align":["left"]},{"label":["n"],"name":[2],"type":["int"],"align":["right"]}],"data":[{"1":"U1653218","2":"1"},{"1":"U3077961","2":"1"},{"1":"U3420791","2":"1"},{"1":"U4517010","2":"1"},{"1":"U5315638","2":"1"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+<pre class="r"><code>#Question 1.3
+TransactionFileCleaned %&gt;% 
+  count(State, sort = TRUE)</code></pre>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["State"],"name":[1],"type":["chr"],"align":["left"]},{"label":["n"],"name":[2],"type":["int"],"align":["right"]}],"data":[{"1":"TN","2":"203"},{"1":"IN","2":"202"},{"1":"WI","2":"201"},{"1":"ME","2":"199"},{"1":"KS","2":"197"},{"1":"IA","2":"195"},{"1":"FL","2":"189"},{"1":"VA","2":"188"},{"1":"OK","2":"186"},{"1":"NH","2":"185"},{"1":"UT","2":"185"},{"1":"WY","2":"185"},{"1":"AZ","2":"184"},{"1":"CA","2":"184"},{"1":"HI","2":"183"},{"1":"VT","2":"182"},{"1":"MA","2":"181"},{"1":"ND","2":"181"},{"1":"LA","2":"180"},{"1":"MT","2":"180"},{"1":"NY","2":"180"},{"1":"DC","2":"179"},{"1":"MS","2":"179"},{"1":"IL","2":"178"},{"1":"MD","2":"178"},{"1":"NC","2":"178"},{"1":"NJ","2":"178"},{"1":"DE","2":"177"},{"1":"ID","2":"177"},{"1":"OR","2":"177"},{"1":"MN","2":"176"},{"1":"WV","2":"176"},{"1":"NE","2":"173"},{"1":"PA","2":"173"},{"1":"NV","2":"172"},{"1":"AR","2":"169"},{"1":"OH","2":"168"},{"1":"GA","2":"167"},{"1":"MO","2":"167"},{"1":"AK","2":"164"},{"1":"SD","2":"164"},{"1":"CO","2":"163"},{"1":"CT","2":"163"},{"1":"SC","2":"163"},{"1":"RI","2":"162"},{"1":"WA","2":"162"},{"1":"MI","2":"160"},{"1":"AL","2":"158"},{"1":"KY","2":"158"},{"1":"NM","2":"157"},{"1":"TX","2":"135"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+<pre class="r"><code>#Regarding Question 1.3 (I am curious)
+TransactionFileCleaned %&gt;%
+  count(State) %&gt;%
+  nrow()</code></pre>
+<pre><code>## [1] 51</code></pre>
+<pre class="r"><code>#51 States???? 
+sort(unique(TransactionFileCleaned$State))</code></pre>
+<pre><code>##  [1] &quot;AK&quot; &quot;AL&quot; &quot;AR&quot; &quot;AZ&quot; &quot;CA&quot; &quot;CO&quot; &quot;CT&quot; &quot;DC&quot; &quot;DE&quot; &quot;FL&quot; &quot;GA&quot; &quot;HI&quot; &quot;IA&quot; &quot;ID&quot; &quot;IL&quot;
+## [16] &quot;IN&quot; &quot;KS&quot; &quot;KY&quot; &quot;LA&quot; &quot;MA&quot; &quot;MD&quot; &quot;ME&quot; &quot;MI&quot; &quot;MN&quot; &quot;MO&quot; &quot;MS&quot; &quot;MT&quot; &quot;NC&quot; &quot;ND&quot; &quot;NE&quot;
+## [31] &quot;NH&quot; &quot;NJ&quot; &quot;NM&quot; &quot;NV&quot; &quot;NY&quot; &quot;OH&quot; &quot;OK&quot; &quot;OR&quot; &quot;PA&quot; &quot;RI&quot; &quot;SC&quot; &quot;SD&quot; &quot;TN&quot; &quot;TX&quot; &quot;UT&quot;
+## [46] &quot;VA&quot; &quot;VT&quot; &quot;WA&quot; &quot;WI&quot; &quot;WV&quot; &quot;WY&quot;</code></pre>
+<pre class="r"><code>#Because DC</code></pre>
+<pre class="r"><code>#Original contains total, AA, AE that were removed
+sort(unique(dataset1A$State))</code></pre>
+<pre><code>##  [1] &quot;&quot;      &quot;AA&quot;    &quot;AE&quot;    &quot;AK&quot;    &quot;AL&quot;    &quot;AP&quot;    &quot;AR&quot;    &quot;AZ&quot;    &quot;CA&quot;   
+## [10] &quot;CO&quot;    &quot;CT&quot;    &quot;DC&quot;    &quot;DE&quot;    &quot;FL&quot;    &quot;GA&quot;    &quot;HI&quot;    &quot;IA&quot;    &quot;ID&quot;   
+## [19] &quot;IL&quot;    &quot;IN&quot;    &quot;KS&quot;    &quot;KY&quot;    &quot;LA&quot;    &quot;MA&quot;    &quot;MD&quot;    &quot;ME&quot;    &quot;MI&quot;   
+## [28] &quot;MN&quot;    &quot;MO&quot;    &quot;MS&quot;    &quot;MT&quot;    &quot;NC&quot;    &quot;ND&quot;    &quot;NE&quot;    &quot;NH&quot;    &quot;NJ&quot;   
+## [37] &quot;NM&quot;    &quot;NV&quot;    &quot;NY&quot;    &quot;OH&quot;    &quot;OK&quot;    &quot;OR&quot;    &quot;PA&quot;    &quot;RI&quot;    &quot;SC&quot;   
+## [46] &quot;SD&quot;    &quot;TN&quot;    &quot;Total&quot; &quot;TX&quot;    &quot;UT&quot;    &quot;VA&quot;    &quot;VT&quot;    &quot;WA&quot;    &quot;WI&quot;   
+## [55] &quot;WV&quot;    &quot;WY&quot;</code></pre>
+<pre class="r"><code>#Question 1.4
+TransactionFileCleaned %&gt;%
+  filter(SecondaryAddress != &quot;&quot;) %&gt;%
+  nrow()</code></pre>
+<pre><code>## [1] 4520</code></pre>
+<pre class="r"><code>#Question 1.5
+TransactionFileCleaned %&gt;% 
+  count(CustomerID) %&gt;% 
+  nrow()</code></pre>
+<pre><code>## [1] 8995</code></pre>
+<pre class="r"><code>#Note for me
+#Could also do this: n_distinct(TransactionFileTest$CustomerID)</code></pre>
+<pre class="r"><code>#Average number placed based on customer_id (Current year 2021)
+nrow(TransactionFileCleaned) / n_distinct(TransactionFileCleaned$CustomerID)</code></pre>
+<pre><code>## [1] 1.000667</code></pre>
+<pre class="r"><code>#For the second part of 1.5 maybe check first time orders
+TransactionFileCleaned %&gt;% 
+  count(FirstTimeOrder) %&gt;% 
+  nrow()</code></pre>
+<pre><code>## [1] 2</code></pre>
+<pre class="r"><code>#Checking which CustomerIDs were not distinct
+#Regarding Question 1.2
+TransactionFile %&gt;%
+  count(CustomerID) %&gt;%
+  filter(n &gt; 1) %&gt;% 
+  nrow()</code></pre>
+<pre><code>## [1] 6</code></pre>
+<pre class="r"><code>#Regarding Question 1.2 (probably can remove)
+n_distinct(TransactionFileCleaned$CustomerID)</code></pre>
+<pre><code>## [1] 8995</code></pre>
+<pre class="r"><code>#Question 2.1
+mail_matches &lt;- semi_join(TransactionFileCleaned, MailFile, by = &quot;FullAddress&quot;)
+holdout_matches &lt;- semi_join(TransactionFileCleaned, HoldoutFile, by = &quot;FullAddress&quot;)</code></pre>
+<pre class="r"><code>#Question 2.1 Cont.
+n_mail_matches &lt;- nrow(mail_matches)
+n_holdout_matches &lt;- nrow(holdout_matches)
+n_mail_matches</code></pre>
+<pre><code>## [1] 1873</code></pre>
+<pre class="r"><code>n_holdout_matches</code></pre>
+<pre><code>## [1] 480</code></pre>
+<pre class="r"><code>#Question 2.2
+mail_matches_updated &lt;- inner_join(mail_matches, MailFile, by = &quot;FullAddress&quot;)
+mail_matches_updated %&gt;%
+  count(TestCell, sort = TRUE)</code></pre>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["TestCell"],"name":[1],"type":["chr"],"align":["left"]},{"label":["n"],"name":[2],"type":["int"],"align":["right"]}],"data":[{"1":"TEST1","2":"1393"},{"1":"TEST2","2":"468"},{"1":"TEST3","2":"12"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+<pre class="r"><code>#includes it with TestCells</code></pre>
+<pre class="r"><code>#Question 2.3
+orders_per_cell &lt;- mail_matches_updated %&gt;%
+  count(TestCell, name = &quot;Orders&quot;)
+#Get the number of transactions for each test</code></pre>
+<pre class="r"><code>mail_totals &lt;- MailFile %&gt;%
+  count(TestCell, name = &quot;TotalMailed&quot;)
+#Total number of mail campaigns for each Test</code></pre>
+<pre class="r"><code>response_rates &lt;- left_join(orders_per_cell, mail_totals, by = &quot;TestCell&quot;) %&gt;%
+  mutate(ResponseRate = round((Orders / TotalMailed) * 100, 2))
+  
+response_rates</code></pre>
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["TestCell"],"name":[1],"type":["chr"],"align":["left"]},{"label":["Orders"],"name":[2],"type":["int"],"align":["right"]},{"label":["TotalMailed"],"name":[3],"type":["int"],"align":["right"]},{"label":["ResponseRate"],"name":[4],"type":["dbl"],"align":["right"]}],"data":[{"1":"TEST1","2":"1393","3":"5089","4":"27.37"},{"1":"TEST2","2":"468","3":"3822","4":"12.24"},{"1":"TEST3","2":"12","3":"12","4":"100.00"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
+  </script>
+</div>
+<pre class="r"><code>#Prints response rate</code></pre>
+<pre class="r"><code>holdout_matches &lt;- semi_join(TransactionFileCleaned, HoldoutFile, by = &quot;FullAddress&quot;)</code></pre>
+<pre class="r"><code>holdout_orders_count &lt;- nrow(holdout_matches)
+holdout_total &lt;- nrow(HoldoutFile)
+
+holdout_response_rate &lt;- round((holdout_orders_count / holdout_total) * 100, 2)
+holdout_response_rate</code></pre>
+<pre><code>## [1] 20.79</code></pre>
+<pre class="r"><code>#Question 2.4 (Note we already have response rate because of question 2.3)
+mail_plan_updated &lt;- mail_plan %&gt;% 
+  mutate(CostPerOrder = round(Total_Cost / Quantity_Mailed, 2))
+#Cost per order completed</code></pre>
+<pre class="r"><code>Roas_table &lt;- mail_matches_updated %&gt;% 
+  group_by(TestCell) %&gt;% 
+  summarise(
+    Revenue = sum(OrderRevenue),
+    Orders = n()) %&gt;% 
+  left_join(mail_plan, by = &quot;TestCell&quot;) %&gt;% 
+  mutate(ROAS = round(Revenue / Total_Cost, 2))
+#ROAS complete</code></pre>
+<pre class="r"><code>FirstOrNot &lt;- mail_matches_updated %&gt;% 
+  group_by(FirstTimeOrder) %&gt;% 
+  summarise(
+    Revenue = sum(OrderRevenue),
+    Orders = n()
+  ) %&gt;% 
+  mutate(FirstTimeOrderRate = round(Orders / sum(Orders), 2)) %&gt;% 
+  mutate(FirstTimeOrderRevPer = round(Revenue / sum(Revenue), 2))
+#First time order rate complete</code></pre>
+<pre class="r"><code>#This one is for me...I am curious
+FirstOrNotbyTest &lt;- mail_matches_updated %&gt;% 
+  group_by(TestCell, FirstTimeOrder) %&gt;% 
+  summarise(
+    Revenue = sum(OrderRevenue),
+    Orders = n()
+  ) %&gt;% 
+  mutate(FirstTimeOrderRateperTest = round(Orders / sum(Orders), 2))</code></pre>
+<pre><code>## `summarise()` has grouped output by &#39;TestCell&#39;. You can override using the
+## `.groups` argument.</code></pre>
 
 
 

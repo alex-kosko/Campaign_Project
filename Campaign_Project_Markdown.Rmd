@@ -3,6 +3,7 @@ title: "Campaign_Project_Markdown"
 output:
   html_document:
     df_print: paged
+  pdf_document: default
 date: "2025-04-23"
 ---
 
@@ -177,14 +178,15 @@ n_holdout_matches
 ```
 ```{r}
 #Question 2.2
-mail_matches_with_cells <- inner_join(mail_matches, MailFile, by = "FullAddress")
-mail_matches_with_cells %>%
+mail_matches_updated <- inner_join(mail_matches, MailFile, by = "FullAddress")
+mail_matches_updated %>%
   count(TestCell, sort = TRUE)
+#includes it with TestCells
 ```
 
 ```{r}
 #Question 2.3
-orders_per_cell <- mail_matches_with_cells %>%
+orders_per_cell <- mail_matches_updated %>%
   count(TestCell, name = "Orders")
 #Get the number of transactions for each test
 ```
@@ -215,31 +217,44 @@ holdout_response_rate <- round((holdout_orders_count / holdout_total) * 100, 2)
 holdout_response_rate
 ```
 ```{r}
-
-```
-
-
-
-
-
-
-
-
-
-
-
-```{r}
-#Ignore everything below
-```
-
-
-```{r}
-mail_matches <- MailFile %>%
-  filter(FullAddress %in% TransactionAddresses)
+#Question 2.4 (Note we already have response rate because of question 2.3)
+mail_plan_updated <- mail_plan %>% 
+  mutate(CostPerOrder = round(Total_Cost / Quantity_Mailed, 2))
+#Cost per order completed
 ```
 
 ```{r}
-holdout_matches <- HoldoutFile %>%
-  filter(FullAddress %in% TransactionAddresses)
+Roas_table <- mail_matches_updated %>% 
+  group_by(TestCell) %>% 
+  summarise(
+    Revenue = sum(OrderRevenue),
+    Orders = n()) %>% 
+  left_join(mail_plan, by = "TestCell") %>% 
+  mutate(ROAS = round(Revenue / Total_Cost, 2))
+#ROAS complete
 ```
+
+```{r}
+FirstOrNot <- mail_matches_updated %>% 
+  group_by(FirstTimeOrder) %>% 
+  summarise(
+    Revenue = sum(OrderRevenue),
+    Orders = n()
+  ) %>% 
+  mutate(FirstTimeOrderRate = round(Orders / sum(Orders), 2)) %>% 
+  mutate(FirstTimeOrderRevPer = round(Revenue / sum(Revenue), 2))
+#First time order rate complete
+```
+
+```{r}
+#This one is for me...I am curious
+FirstOrNotbyTest <- mail_matches_updated %>% 
+  group_by(TestCell, FirstTimeOrder) %>% 
+  summarise(
+    Revenue = sum(OrderRevenue),
+    Orders = n()
+  ) %>% 
+  mutate(FirstTimeOrderRateperTest = round(Orders / sum(Orders), 2))
+```
+
 

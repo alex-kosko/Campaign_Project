@@ -37,9 +37,9 @@ setwd("C:/Users/alexj/OneDrive/Desktop/Campaign_Project")
 
 ```{r}
 dataset1A <- read.csv("C:/Users/alexj/OneDrive/Desktop/Campaign_Project/data-analyst-take-home/dataset1a.csv")
-dataset1B <- read.csv("C:/Users/alexj/OneDrive/Desktop/Campaign_Project/data-analyst-take-home/dataset1b.csv")
-dataset1C <- read.csv("C:/Users/alexj/OneDrive/Desktop/Campaign_Project/data-analyst-take-home/dataset1c.csv")
-mail_plain <- read.csv("C:/Users/alexj/OneDrive/Desktop/Campaign_Project/data-analyst-take-home/mail_plan.csv")
+MailFile <- read.csv("data-analyst-take-home/dataset1b.csv")
+HoldoutFile <- read.csv("data-analyst-take-home/dataset1c.csv")
+mail_plan <- read.csv("C:/Users/alexj/OneDrive/Desktop/Campaign_Project/data-analyst-take-home/mail_plan.csv")
 ```
 
 ```{r}
@@ -47,24 +47,46 @@ mail_plain <- read.csv("C:/Users/alexj/OneDrive/Desktop/Campaign_Project/data-an
 #Question 1.1
 TransactionFile <- dataset1A %>% 
   filter(str_detect(PrimaryAddress, "^[0-9]"))
-#9025 valid addresses
+#Interesting note: these addresses remove any Armed Forces Europe & Americas (AE & AA)
 ```
 
 ```{r}
-#Question 1.2
-TransactionFileTest <- TransactionFile %>% 
- filter(!str_detect(OrderDate, "^2027")) %>%
-  mutate(OrderDate = as.Date(OrderDate)) %>% 
-  filter(!is.na(OrderDate)) %>% 
-  arrange(OrderNumber, OrderDate) %>% 
-  distinct(OrderNumber, .keep_all = TRUE)
+#Answer printed for question 1.1
+TransactionFile %>% 
+  count(PrimaryAddress) %>% 
+  nrow()
 ```
+
+
+```{r}
+TransactionFile %>%
+  count(OrderNumber) %>% 
+  filter(n > 1)
+```
+
+```{r}
+sum(TransactionFile$OrderNumber == "") #Number of NAs in Transaction File; Order Number Column
+```
+
+
+```{r}
+#Question 1.2
+TransactionFileCleaned <- TransactionFile %>% 
+ filter(!str_detect(OrderDate, "^2027")) %>%  #remove incorrect dates
+  mutate(OrderDate = as.Date(OrderDate)) %>%  #change OrderDate to from character to Date
+  filter(!is.na(OrderDate)) %>%               #remove any NAs in Date column
+  filter(OrderNumber != "") %>%               #remove any blank characters in OrderNumber column
+  arrange(OrderNumber, OrderDate) %>%         #arrange by OrderNumber then Orderdate
+  distinct(OrderNumber, .keep_all = TRUE)     #keep distinct values in OrderNumber that occured first
+```
+
+
 
 ```{r}
 #Maybe remove (This has nothing to do with the assignment at least what the question is asking)
 #OrderNumbers are NA, counting those
 #Wondering if I should randomly assign order numbers to these individuals
-
+#Regarding Question 1.2
 bad_ids <- TransactionFile %>%
   filter(OrderNumber == "") %>%
   pull(CustomerID)
@@ -75,16 +97,149 @@ TransactionFile %>%
 
 ```
 
+```{r}
+#Question 1.3
+TransactionFileCleaned %>% 
+  count(State, sort = TRUE)
+```
+```{r}
+#Regarding Question 1.3 (I am curious)
+TransactionFileCleaned %>%
+  count(State) %>%
+  nrow()
+
+```
+```{r}
+#51 States???? 
+sort(unique(TransactionFileCleaned$State))
+#Because DC
+```
+
+
+```{r}
+#Original contains total, AA, AE that were removed
+sort(unique(dataset1A$State))
+```
+
+
+```{r}
+#Question 1.4
+TransactionFileCleaned %>%
+  filter(SecondaryAddress != "") %>%
+  nrow()
+```
+```{r}
+#Question 1.5
+TransactionFileCleaned %>% 
+  count(CustomerID) %>% 
+  nrow()
+
+#Note for me
+#Could also do this: n_distinct(TransactionFileTest$CustomerID)
+```
+```{r}
+#Average number placed based on customer_id (Current year 2021)
+nrow(TransactionFileCleaned) / n_distinct(TransactionFileCleaned$CustomerID)
+```
+```{r}
+#For the second part of 1.5 maybe check first time orders
+TransactionFileCleaned %>% 
+  count(FirstTimeOrder) %>% 
+  nrow()
+```
 
 ```{r}
 #Checking which CustomerIDs were not distinct
+#Regarding Question 1.2
 TransactionFile %>%
   count(CustomerID) %>%
-  filter(n > 1)
+  filter(n > 1) %>% 
+  nrow()
+```
+
+
+```{r}
+#Regarding Question 1.2 (probably can remove)
+n_distinct(TransactionFileCleaned$CustomerID)
 ```
 ```{r}
-TransactionFile %>%
-  count(OrderNumber) %>% 
-  filter(n > 1)
+#Question 2.1
+mail_matches <- semi_join(TransactionFileCleaned, MailFile, by = "FullAddress")
+holdout_matches <- semi_join(TransactionFileCleaned, HoldoutFile, by = "FullAddress")
+```
+
+```{r}
+#Question 2.1 Cont.
+n_mail_matches <- nrow(mail_matches)
+n_holdout_matches <- nrow(holdout_matches)
+n_mail_matches
+n_holdout_matches
+```
+```{r}
+#Question 2.2
+mail_matches_with_cells <- inner_join(mail_matches, MailFile, by = "FullAddress")
+mail_matches_with_cells %>%
+  count(TestCell, sort = TRUE)
+```
+
+```{r}
+#Question 2.3
+orders_per_cell <- mail_matches_with_cells %>%
+  count(TestCell, name = "Orders")
+#Get the number of transactions for each test
+```
+
+```{r}
+mail_totals <- MailFile %>%
+  count(TestCell, name = "TotalMailed")
+#Total number of mail campaigns for each Test
+```
+
+```{r}
+response_rates <- left_join(orders_per_cell, mail_totals, by = "TestCell") %>%
+  mutate(ResponseRate = round((Orders / TotalMailed) * 100, 2))
+  
+response_rates
+#Prints response rate
+```
+
+```{r}
+holdout_matches <- semi_join(TransactionFileCleaned, HoldoutFile, by = "FullAddress")
+```
+
+```{r}
+holdout_orders_count <- nrow(holdout_matches)
+holdout_total <- nrow(HoldoutFile)
+
+holdout_response_rate <- round((holdout_orders_count / holdout_total) * 100, 2)
+holdout_response_rate
+```
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+#Ignore everything below
+```
+
+
+```{r}
+mail_matches <- MailFile %>%
+  filter(FullAddress %in% TransactionAddresses)
+```
+
+```{r}
+holdout_matches <- HoldoutFile %>%
+  filter(FullAddress %in% TransactionAddresses)
 ```
 

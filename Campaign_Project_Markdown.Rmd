@@ -53,6 +53,7 @@ TransactionFile %>%
 TransactionFile %>%
   count(OrderNumber) %>% 
   filter(n > 1)
+#Print rows to see repeat order numbers. Blank order numbers are bothering me
 ```
 
 
@@ -80,11 +81,12 @@ TransactionFileCleaned <- TransactionFile %>%
 ```{r}
 #Maybe remove (This has nothing to do with the assignment at least what the question is asking)
 #OrderNumbers are NA, counting those
-#Wondering if I should randomly assign order numbers to these individuals
+#Wondering if I should randomly assign order numbers to these individuals...probably not
 #Regarding Question 1.2
-bad_orders <- TransactionFile %>%
+na_orders <- TransactionFile %>%
   filter(OrderNumber == "") %>%
   select(CustomerID)
+#Want to put them in one dataframe, would probably ask for corrected data if possible but decided to remove from analysis in this case
 ```
 
 ```{r}
@@ -94,13 +96,14 @@ TransactionFileCleaned %>%
 ```
 
 ```{r}
+#Create visualization for states
 TransactionFileCleaned %>%
   count(State, name = "Orders") %>%
   arrange(desc(Orders)) %>%
-  top_n(10, Orders) %>%  # Optional: top 10 states
+  top_n(10, Orders) %>%  
   ggplot(aes(x = reorder(State, Orders), y = Orders)) +
   geom_col(fill = "darkgreen") +
-  geom_text(aes(label = Orders), hjust = -0.1, size = 3.5) +  # Add labels on bars
+  geom_text(aes(label = Orders), hjust = -0.1, size = 3.5) +  
   scale_x_discrete(expand = expansion(mult = c(0, 0.1))) +
   coord_flip() +
   labs(
@@ -110,7 +113,7 @@ TransactionFileCleaned %>%
   ) +
   theme_minimal() +
   theme(
-    plot.title = element_text(hjust = 0.5, face = "bold")  # Center the title
+    plot.title = element_text(hjust = 0.5, face = "bold") 
   )
 ```
 
@@ -134,7 +137,40 @@ sort(unique(TransactionFileCleaned$State))
 #Original contains total, AA, AE that were removed
 sort(unique(dataset1A$State))
 ```
+```{r}
+#Trying something new
 
+state_orders <- TransactionFileCleaned %>%
+  count(State, name = "Orders") #Summarize orders by state abbreviation
+
+state_abbrevs <- data.frame(
+  State = state.abb,
+  full_name = tolower(state.name))  #Create a lookup table from abbreviations to full state names
+
+state_orders_map <- left_join(state_orders, state_abbrevs, by = "State") #Join to get full state names (required for map_data)
+```
+
+
+```{r}
+us_map <- map_data("state") #loads map data and built in map from maps package
+
+map_data_with_orders <- left_join(us_map, state_orders_map, by = c("region" = "full_name"))
+```
+
+```{r}
+ggplot(map_data_with_orders, aes(long, lat, group = group)) + #In this case it tells Long and Lat
+  geom_polygon(aes(fill = Orders), color = "white") + #draws states and fills by orders
+  scale_fill_gradient(low = "lightblue", high = "darkblue", na.value = "gray90") + #in this case na value doesnt matter but I think its significant to due for practice purposes
+  labs(
+    title = "Number of Orders by State",
+    fill = "Orders"
+  ) +
+  theme_void() + #removes background and grid to only show me the map
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold") #and we are now bold and centered
+  )
+#beautiful
+```
 
 ```{r}
 #Question 1.4
@@ -146,7 +182,7 @@ TransactionFileCleaned %>%
 ```{r}
 TransactionFileCleaned %>%
   mutate(HasSecondaryAddress = ifelse(SecondaryAddress != "", "Yes", "No")) %>%
-  count(HasSecondaryAddress) %>%
+  count(HasSecondaryAddress) %>% #filtered for ggplot to get secondary address results
   ggplot(aes(x = HasSecondaryAddress, y = n, fill = HasSecondaryAddress)) +
   geom_col(show.legend = FALSE) +
   geom_text(aes(label = n), vjust = -0.5, size = 4) +
@@ -160,15 +196,16 @@ TransactionFileCleaned %>%
 ```
 
 ```{r}
+#Creates dataframe for those who live in Apt or Suite since they are the only two in the data after filtering PO Boxes
 AptOrSuiteSummary <- TransactionFileCleaned %>%
   filter(str_starts(SecondaryAddress, "Apt") | str_starts(SecondaryAddress, "Suite")) %>%
   mutate(AddressType = ifelse(str_starts(SecondaryAddress, "Apt"), "Apt", "Suite")) %>%
   count(AddressType)
-
+#Note no AA & AE due to cleaning process
 ```
 
 ```{r}
-ggplot(AptOrSuiteSummary, aes(x = AddressType, y = n, fill = AddressType)) +
+ggplot(data = AptOrSuiteSummary,mapping = aes(x = AddressType, y = n, fill = AddressType)) +
   geom_col(show.legend = FALSE) +
   geom_text(aes(label = n), vjust = -0.5, size = 4) +
   labs(
@@ -186,31 +223,26 @@ ggplot(AptOrSuiteSummary, aes(x = AddressType, y = n, fill = AddressType)) +
 
 ```{r}
 #Question 1.5
-TransactionFileCleaned %>% 
-  count(CustomerID) %>% 
-  nrow()
-
-#Note for me
-#Could also do this: n_distinct(TransactionFileTest$CustomerID)
+n_distinct(TransactionFileCleaned$CustomerID)
 ```
 ```{r}
 #Average number placed based on customer_id (Current year 2021)
 nrow(TransactionFileCleaned) / n_distinct(TransactionFileCleaned$CustomerID)
+#This is basically 1...bring up in presentation. No need to put this number
 ```
 ```{r}
 customer_order_counts <- TransactionFileCleaned %>%
   count(CustomerID, name = "Orders")
 orders_distribution <- customer_order_counts %>%
   count(Orders, name = "NumCustomers")
-
-
+#Getting a dataframe with sum of orders and count of CustomerIDS
 ```
 
 
 ```{r}
 ggplot(orders_distribution, aes(x = Orders, y = NumCustomers)) +
-  geom_col(fill = "darkgreen") +
-  scale_x_continuous(breaks = c(1, 2)) +   # ✅ Set x-axis breaks to 1 and 2 only
+  geom_col(fill = "darkgreen") + #I like the green better for this for whatever reason. 
+  scale_x_continuous(breaks = c(1, 2)) +  
   scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
   geom_text(aes(label = NumCustomers), vjust = -0.5) +
   labs(
@@ -220,6 +252,7 @@ ggplot(orders_distribution, aes(x = Orders, y = NumCustomers)) +
   ) +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+#Gets the job done better than just 1.00006 or whatever
 ```
 
 
@@ -231,30 +264,20 @@ duplicate_customers <- TransactionFileCleaned %>%
 duplicate_orders_with_addresses <- TransactionFileCleaned %>%
   semi_join(duplicate_customers, by = "CustomerID") %>% 
   arrange(CustomerID)
+#Looking at those customers individually
 ```
 
 
-```{r}
-#For the second part of 1.5 maybe check first time orders
-TransactionFileCleaned %>% 
-  filter(FirstTimeOrder == "1") %>% 
-  nrow()
-```
 
 ```{r}
 #Checking which CustomerIDs were not distinct
-#Regarding Question 1.2
+#Regarding above to check accuracy 
 TransactionFile %>%
   count(CustomerID) %>%
   filter(n > 1) %>% 
   nrow()
 ```
 
-
-```{r}
-#Regarding Question 1.2 (probably can remove)
-n_distinct(TransactionFileCleaned$CustomerID)
-```
 ```{r}
 #Question 2.1
 mail_matches <- semi_join(TransactionFileCleaned, MailFile, by = "FullAddress")
@@ -265,21 +288,19 @@ holdout_matches <- semi_join(TransactionFileCleaned, HoldoutFile, by = "FullAddr
 #Question 2.1 Cont.
 n_mail_matches <- nrow(mail_matches)
 n_holdout_matches <- nrow(holdout_matches)
-n_mail_matches
-n_holdout_matches
+n_mail_matches #print our mail matches (i.e. for test 1-3)
+n_holdout_matches #print holdout matches
 ```
 ```{r}
 match_summary <- data.frame(
   Group = c("Mailed", "Holdout"),
   Matches = c(n_mail_matches, n_holdout_matches)
 )
-
+#Puts the above results into a data frame
 ```
 
 
 ```{r}
-library(ggplot2)
-
 ggplot(match_summary, aes(x = Group, y = Matches, fill = Group)) +
   geom_col(show.legend = FALSE) +
   geom_text(aes(label = Matches), vjust = -0.1, size = 5) +
@@ -292,7 +313,7 @@ ggplot(match_summary, aes(x = Group, y = Matches, fill = Group)) +
   theme(
     plot.title = element_text(hjust = 0.5, face = "bold")
   )
-
+#Printed table for visual
 ```
 
 
@@ -301,16 +322,16 @@ ggplot(match_summary, aes(x = Group, y = Matches, fill = Group)) +
 mail_matches_updated <- inner_join(mail_matches, MailFile, by = "FullAddress")
 mail_matches_updated %>%
   count(TestCell, sort = TRUE)
-#includes it with TestCells
+#includes it with TestCells for each test
 ```
 
 ```{r}
 mail_matches_updated %>%
-  count(TestCell, name = "Matches") %>%
+  count(TestCell, name = "Matches") %>% #filtering again (this is new to me but so much easier if I feel confident that data is clean properly)
   ggplot(aes(x = Matches, y = reorder(TestCell, Matches), fill = TestCell)) +
   geom_col(show.legend = FALSE) +
   geom_text(aes(label = Matches), hjust = -0.1, size = 5) +
-  scale_x_continuous(expand = expansion(mult = c(0, 0.1))) +  # Space at end of axis
+  scale_x_continuous(expand = expansion(mult = c(0, 0.1))) +
   labs(
     title = "Number of Matches by Test Cell",
     x = "Number of Matched Orders",
@@ -335,10 +356,6 @@ mail_totals <- MailFile %>%
 #Total number of mail campaigns for each Test
 ```
 
-```{r}
-MailFile %>% 
-  count(TestCell)
-```
 
 ```{r}
 #Numbers are off... should be 3822 for mail_plan...change mail plan TestCell 2 Quantity Mailed
@@ -351,24 +368,27 @@ mail_plan %>%
 if (mail_plan$Quantity_Mailed[mail_plan$TestCell == "TEST2"] != 3822) {
   mail_plan$Quantity_Mailed[mail_plan$TestCell == "TEST2"] <- mail_plan$Quantity_Mailed[mail_plan$TestCell == "TEST2"] + 10
 }
-
-mail_plan
+#This fixes the error in the mail_plan file. Quantity is actually 3822 not 3812
+#Did an if statement because I run my code over and over again and dont want to get the wrong number if I dont use the if statement (i.e. if it is at 3822 I dont want it to change)
+mail_plan 
 ```
 
 
 ```{r}
+#Calculate Response Rate
 response_rates <- left_join(orders_per_cell, mail_totals, by = "TestCell") %>%
   mutate(ResponseRate = round((Orders / TotalMailed) * 100, 2))
   
 response_rates
-#Prints response rate
 ```
 
 ```{r}
+#Keeps matches for holdout
 holdout_matches <- semi_join(TransactionFileCleaned, HoldoutFile, by = "FullAddress")
 ```
 
 ```{r}
+#Other response rates
 holdout_orders_count <- nrow(holdout_matches)
 holdout_total <- nrow(HoldoutFile)
 
@@ -379,24 +399,24 @@ holdout_response_rate
 ```{r}
 #Question 2.4
 CPO_table <- mail_matches_updated %>%
-  group_by(TestCell) %>%
+  group_by(TestCell) %>% #all of these will be done by test (i.e. grouped by)
   summarise(
-    Orders = n()) %>%
+    Orders = n()) %>% #basically agregating all rows into one through based on what I group by
   left_join(mail_plan, by = "TestCell") %>%
-  mutate(CPO = round(Total_Cost / Orders, 2)) %>%
-  select(TestCell, Orders, Total_Cost, CPO)
-
+  mutate(CPO = round(Total_Cost / Orders, 2)) %>% #new column 
+  select(TestCell, Orders, Total_Cost, CPO) #picking what i need
+#done
 ```
 
 
 ```{r}
 Roas_table <- mail_matches_updated %>% 
-  group_by(TestCell) %>% 
+  group_by(TestCell) %>% #gets it by Testcell
   summarise(
     Revenue = sum(OrderRevenue),
     Orders = n()) %>% 
   left_join(mail_plan, by = "TestCell") %>% 
-  mutate(ROAS = round(Revenue / Total_Cost, 2))
+  mutate(ROAS = round(Revenue / Total_Cost, 2)) #create new column
 #ROAS complete
 ```
 
@@ -423,6 +443,7 @@ RevenuePerPiece_table <- Roas_table %>%
   left_join(mail_totals, by = "TestCell") %>%
   mutate(RevenuePerPiece = round(Revenue / TotalMailed, 2)) %>%
   select(TestCell, TotalMailed, Revenue, RevenuePerPiece)
+#Looked up other metrics, this came up. I can calculate so why not
 ```
 
 ```{r}
@@ -461,7 +482,6 @@ HoldoutFirstOrNot <- holdout_matches %>%
   )
 ```
 
-
 ```{r}
 FirstbyTest <- FirstOrNotbyTest %>%
   filter(FirstTimeOrder == 1)
@@ -469,47 +489,7 @@ FirstbyTest <- FirstOrNotbyTest %>%
 
 
 ```{r}
-#Trying something new
-# Summarize orders by state abbreviation
-state_orders <- TransactionFileCleaned %>%
-  count(State, name = "Orders")
-
-# Create a lookup table from abbreviations to full state names
-state_abbrevs <- data.frame(
-  State = state.abb,
-  full_name = tolower(state.name)
-)
-
-# Join to get full state names (required for map_data)
-state_orders_map <- left_join(state_orders, state_abbrevs, by = "State")
-
-```
-
-
-```{r}
-us_map <- map_data("state")
-
-map_data_with_orders <- left_join(us_map, state_orders_map, by = c("region" = "full_name"))
-
-```
-
-```{r}
-ggplot(map_data_with_orders, aes(long, lat, group = group)) +
-  geom_polygon(aes(fill = Orders), color = "white") +
-  scale_fill_gradient(low = "lightblue", high = "darkblue", na.value = "gray90") +
-  labs(
-    title = "Number of Orders by State",
-    fill = "Orders"
-  ) +
-  theme_void() +
-  theme(
-    plot.title = element_text(hjust = 0.5, face = "bold")
-  )
-
-```
-
-```{r}
-mail_summary <- mail_matches_updated %>%
+mail_summary <- mail_matches_updated %>% #This table is gonna be used for my metrics
   group_by(TestCell) %>%
   summarise(
     Orders = n(),
@@ -521,24 +501,25 @@ mail_summary <- mail_matches_updated %>%
     CostPerOrder = round(Total_Cost / Orders, 2),
     ROAS = round(Revenue / Total_Cost, 2),
     AOV = round(Revenue / Orders, 2),
-    RevenuePerPiece = round(Revenue / Quantity_Mailed, 2)
+    RevenuePerPiece = round(Revenue / Quantity_Mailed, 2),
+    CostPerPiece = round(Total_Cost / Quantity_Mailed, 2)
   ) %>%
   select(TestCell, Quantity_Mailed, Orders, Revenue, Total_Cost, 
-         ResponseRate, CostPerOrder, ROAS, AOV, RevenuePerPiece) %>%
+         ResponseRate, CostPerOrder, ROAS, AOV, RevenuePerPiece, CostPerPiece) %>%
   arrange(TestCell)
 ```
 
-```{r}
-mail_summary %>%
-  kable("html", caption = "Key Metrics") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), 
-                full_width = TRUE, font_size = 13) %>%
-  row_spec(0, bold = TRUE)
 
+```{r}
+mail_summary %>% #My table data
+  kable("html", caption = "Key Metrics") %>% #html because I'm knitting and I am on windows and caption is just title
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), #striped makes alternating color, hover highlights row when I go over it, condensed makes it tighter, responsive makes it easy for others to read if they have a smaller screen
+                full_width = TRUE, font_size = 13) %>% #table is full width across screen and set font size
+  row_spec(0, bold = TRUE) #Makes row 0 i.e. my header bold. In this case, my column header
 ```
 
 ```{r}
-first_time_summary <- mail_matches_updated %>%
+first_time_summary <- mail_matches_updated %>% #doing same as before just for first time orders
   group_by(TestCell) %>%
   summarise(
     TotalOrders = n(),
@@ -546,21 +527,70 @@ first_time_summary <- mail_matches_updated %>%
     FirstTimeOrders = sum(FirstTimeOrder == 1),
     FirstTimeRevenue = sum(OrderRevenue[FirstTimeOrder == 1])
   ) %>%
+  left_join(mail_plan, by = "TestCell") %>% 
   mutate(
     FirstTimeOrderPct = round(FirstTimeOrders / TotalOrders * 100, 2),
     FirstTimeRevenuePct = round(FirstTimeRevenue / TotalRevenue * 100, 2),
-    FirstTimeAOV = round(FirstTimeRevenue / FirstTimeOrders, 2)
+    FirstTimeAOV = round(FirstTimeRevenue / FirstTimeOrders, 2),
+    FirstTimeROAS = round(FirstTimeRevenue / Total_Cost, 2)
   ) %>%
   select(TestCell, TotalOrders, FirstTimeOrders, FirstTimeOrderPct,
-         TotalRevenue, FirstTimeRevenue, FirstTimeRevenuePct, FirstTimeAOV) %>%
+         TotalRevenue, FirstTimeRevenue, FirstTimeRevenuePct, FirstTimeROAS, FirstTimeAOV) %>%
   arrange(TestCell)
+```
 
-# Display first-time buyers table
-first_time_summary %>%
+```{r}
+first_time_summary %>% #make the same table as before
   kable("html", caption = "First-Time Buyer Metrics by Test Cell") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = TRUE, font_size = 13) %>%
   row_spec(0, bold = TRUE)
 ```
+
+```{r}
+#Maybe put a box plot to show new acqusition results for visual
+mail_matches_updated %>%
+  filter(TestCell %in% c("TEST1", "TEST2")) %>%
+  ggplot(aes(x = FirstTimeOrder, y = OrderRevenue, fill = FirstTimeOrder)) +
+  geom_boxplot() +
+  facet_wrap(~ TestCell) +
+  labs(
+    title = "Order Revenue Distribution by First-Time vs Repeat Buyers",
+    x = "First-Time Order",
+    y = "Order Revenue ($)",
+    fill = "Buyer Type"  
+  ) +
+  scale_fill_discrete(
+    labels = c("Repeat Buyer", "First-Time Buyer")
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+
+#The box plots are basically similar. Don't see a case of significance where I should use it.
+```
+```{r}
+#Number of successes
+success <- c(1393, 468)
+
+#Totaled mailed
+trials <- c(5089, 3822)
+
+#2-proportion z-test
+prop.test(success, trials)
+#Ok so statisically significant in difference regarding response rate
+#Z test used because its between to proportions
+
+```
+
+
+```{r}
+#R automatically uses Welch's t-test so thats good to remember because I'm assuming different variance between both
+t.test(OrderRevenue ~ TestCell, data = mail_matches_updated %>% 
+         filter(TestCell %in% c("TEST1", "TEST2")))
+#Not statisically significant in AOV
+```
+
 
 ```{r}
 #Additional stuff for me continued down
@@ -574,8 +604,11 @@ ggplot(TransactionFileCleaned, aes(x = OrderRevenue)) +
   ) +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+#This some fake data man
+#This wasnt use, I was just having fun and wanted to see what the distribution was looking like
 ```
 ```{r}
+#The Dan Ariely Master Class...still a good book
 ggplot(mail_matches_updated, aes(x = OrderRevenue)) +
   geom_histogram(binwidth = 100, fill = "steelblue", color = "black") +
   scale_x_continuous(breaks = seq(0, 1000, by = 100)) +
@@ -587,4 +620,65 @@ ggplot(mail_matches_updated, aes(x = OrderRevenue)) +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5, face = "bold"))
 ```
+```{r}
+#Trying to determine if product is seasonal
+#Previous fun project actually gave me the idea to make this
+TransactionFileCleaned %>%
+  mutate(Month = as.Date(format(OrderDate, "%Y-%m-01"))) %>%  
+  group_by(Month) %>%
+  summarise(OrderCount = n()) %>%  
+  ggplot(aes(x = Month, y = OrderCount)) +
+  geom_bar(stat = "identity", fill = "maroon", color = "black") +
+  scale_x_date(
+    breaks = "1 month",  
+    labels = scales::date_format("%b")  
+  ) +
+  labs(
+    title = "Order Count per Month",
+    x = "Month",
+    y = "Count"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+#Will be used to showcase how I can make other variables out of data I am given and apply these to my analysis
+#In this case not effective however, its showcases how I try to determine variables in analysis
+```
+
+```{r}
+#Curious to see if there is a difference in response rate between first time buyers for each test
+response_data_FT <- mail_matches_updated %>%
+  mutate(CustomerType = ifelse(FirstTimeOrder == 1, "First-Time Buyers", "Repeat Customers")) %>%
+  group_by(TestCell, CustomerType) %>%
+  summarise(
+    Orders = n()
+  ) %>%
+  left_join(mail_plan, by = "TestCell") %>%
+  mutate(ResponseRate = round((Orders / Quantity_Mailed) * 100, 2)) %>%
+  select(TestCell, CustomerType, ResponseRate)
+
+response_data_FT
+```
+
+
+```{r}
+response_data_holdout_FT <- holdout_matches %>%
+  mutate(CustomerType = ifelse(FirstTimeOrder == 1, "First-Time Buyers", "Repeat Customers")) %>%
+  group_by(CustomerType) %>%
+  summarise(
+    Orders = n()
+  ) %>%
+  mutate(
+    TestCell = "Holdout",
+    Quantity_Mailed = nrow(HoldoutFile),
+    ResponseRate = round((Orders / Quantity_Mailed) * 100, 2)
+  ) %>%
+  select(TestCell, CustomerType, ResponseRate)
+
+response_data_holdout_FT
+#Yea so basically even which I expected based on all this data but needed to make sure because of new acquisition question
+#If holdout response rate for new acquisitions was high for some reason compared to Test 1 then an issue might appear
+```
+
+
+
 
